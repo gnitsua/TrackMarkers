@@ -44,8 +44,8 @@ class ArucoCornerTracker():
         markerSeparation=0.01,
         dictionary=ARUCO_DICT)
 
-    def __init__(self):
-        self.K = self.getCameraCalibration('webcam.npz')
+    def __init__(self, calibration):
+        self.K = self.getCameraCalibration(calibration)
 
 
 

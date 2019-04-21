@@ -45,13 +45,15 @@ class ArucoCornerTracker():
         dictionary=ARUCO_DICT)
 
     def __init__(self):
-        self.K = self.getCameraCalibration('calib.npz')
+        self.K = self.getCameraCalibration('webcam.npz')
 
 
 
     def getCameraCalibration(self,filename):
-        img = cv2.imread('calib_images/opencv_frame_10.png') #TODO: this should come with the calibration
-        h, w = img.shape[:2]
+        # img = cv2.imread('calib_images/opencv_frame_10.png') #TODO: this should come with the calibration
+        # h, w = img.shape[:2]
+        h = 720
+        w = 1280
         npzfile = numpy.load(filename)
         mtx = npzfile['mtx']
         dist = npzfile['dist']
@@ -74,9 +76,11 @@ class ArucoCornerTracker():
         # if ids is not None and (len(ids) > 2 and len(ids) < 4):
         # Print corners and ids to the console
         toplefts = {}
-        for i, corner in zip(ids, corners):
-            # print('ID: {}; Corners: {}'.format(i, corner))
-            toplefts[i[0]] = corner[0][0]
+        print(corners)
+        if(ids is not None):
+            for i, corner in zip(ids, corners):
+                # print('ID: {}; Corners: {}'.format(i, corner))
+                toplefts[i[0]] = corner[0][0]
 
         return toplefts
 
@@ -98,39 +102,39 @@ class ArucoCornerTracker():
             top = cornerPoints[0]
             bottom = cornerPoints[2]
             right = cornerPoints[1]
-            print("top: " + str(top) + ", bottom: " + str(bottom) + "right: " + str(right))
-            return [top, ]
+            # print("top: " + str(top) + ", bottom: " + str(bottom) + "right: " + str(right))
+            N = find_intersection(top, bottom, right)
+            qr_im = np.float32([top, bottom, [N[0], N[1]], right])
+            # Solve the PnP problem using OpenCV function and get the rotation and translation
+            ret, rvec, tvec = cv2.solvePnP(self.qr3d, qr_im, self.K, self.dist_coef)
+            # Change rotation vector to rotation matrix
+            rot_mat, _ = cv2.Rodrigues(rvec)
+            # Change rotation and translation from camera coordinate to world coordinate
+            rot_mat = rot_mat.transpose()
+            tvec = -np.dot(rot_mat, tvec)
+            # draw the camera frame in the figure
+            x = []
+            y = []
+            z = []
+
+            for point in self.camera_frame:
+                point = np.array(point)
+                out = np.dot(rot_mat, point.transpose()) + tvec.transpose()
+                out = out[0]
+                x.append(out[0])
+                y.append(out[1])
+                z.append(out[2])
+
+            # Calculate the rotation angle from rotation matrix
+            angle = rotationMatrix2Angle(rot_mat)
+            # print(
+            #     "x: %.2f cm, y: %.2f cm, z: %.2f cm, Pitch is %.2f degrees, Yaw is %.2f degrees, Roll is %.2f degrees." % (
+            #         tvec[0] / 10.0, tvec[1] / 10.0, tvec[2] / 10.0, angle[0], angle[1], angle[2]))
+            return [tvec[0], tvec[1], tvec[2], angle[0], angle[1], angle[2]]
         except KeyError:
-            pass
+            raise RuntimeError("Not enough markers in veiw")
 
-        N = find_intersection(top, bottom, right)
-        qr_im = np.float32([top, bottom, [N[0], N[1]], right])
-        # Solve the PnP problem using OpenCV function and get the rotation and translation
-        ret, rvec, tvec = cv2.solvePnP(self.qr3d, qr_im, self.K, self.dist_coef)
-        # Change rotation vector to rotation matrix
-        rot_mat, _ = cv2.Rodrigues(rvec)
-        # Change rotation and translation from camera coordinate to world coordinate
-        rot_mat = rot_mat.transpose()
-        tvec = -np.dot(rot_mat, tvec)
-        # draw the camera frame in the figure
-        x = []
-        y = []
-        z = []
 
-        for point in self.camera_frame:
-            point = np.array(point)
-            out = np.dot(rot_mat, point.transpose()) + tvec.transpose()
-            out = out[0]
-            x.append(out[0])
-            y.append(out[1])
-            z.append(out[2])
-
-        # Calculate the rotation angle from rotation matrix
-        angle = rotationMatrix2Angle(rot_mat)
-        # print(
-        #     "x: %.2f cm, y: %.2f cm, z: %.2f cm, Pitch is %.2f degrees, Yaw is %.2f degrees, Roll is %.2f degrees." % (
-        #         tvec[0] / 10.0, tvec[1] / 10.0, tvec[2] / 10.0, angle[0], angle[1], angle[2]))
-        return [tvec[0], tvec[1], tvec[2], angle[0], angle[1], angle[2]]
 
 #     if cv2.waitKey(1) & 0xFF == ord('q'):
 #         break

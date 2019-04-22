@@ -33,7 +33,9 @@ class ArucoCornerTracker():
     ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_4X4_1000)
 
     dist_coef = np.zeros(4)
-    qr3d = np.float32([[-50, 50, 0], [-50, -50, 0], [50, -50, 0], [50, 50, 0]])
+
+    # qr3d = np.float32([[-5.5, 5.5, 0], [-5.5, -5.5, 0], [5.5, -5.5, 0], [5.5, 5.5, 0]])
+    qr3d = np.float32([[0, 0, 0], [0, -100, 0], [100, -100, 0], [100, 0, 0]])
     camera_frame = [[0, 0, 0], [40, 0, 0], [40, 40, 0], [0, 40, 0], [0, 0, 0]]
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -50,17 +52,16 @@ class ArucoCornerTracker():
 
 
     def getCameraCalibration(self,filename):
-        # img = cv2.imread('calib_images/opencv_frame_10.png') #TODO: this should come with the calibration
-        # h, w = img.shape[:2]
-        h = 720
-        w = 1280
         npzfile = numpy.load(filename)
+        h = npzfile['h']
+        w = npzfile['w']
         mtx = npzfile['mtx']
         dist = npzfile['dist']
         newCameraMtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
         return newCameraMtx
 
     def getCornerPoints(self, QueryImg):
+        print(QueryImg.shape)
         objp = np.zeros((6 * 7, 3), np.float32)
         objp[:, :2] = np.mgrid[0:7, 0:6].T.reshape(-1, 2)
 
@@ -82,17 +83,19 @@ class ArucoCornerTracker():
                 # print('ID: {}; Corners: {}'.format(i, corner))
                 toplefts[i[0]] = corner[0][0]
 
+            # # Outline all of the markers detected in our image
+            # #
+            #
+            # # Wait on this frame
+            # if cv2.waitKey(0) & 0xFF == ord('q'):
+            #      pass
+            #
+            # # Display our image
+            # cv2.imshow('QueryImage', QueryImg)
+
         return toplefts
 
-        # Outline all of the markers detected in our image
-        #
 
-        # Wait on this frame
-        # if cv2.waitKey(0) & 0xFF == ord('q'):
-        #     break
-
-        # Display our image
-        # cv2.imshow('QueryImage', QueryImg)
 
         # Exit at the end of the video on the 'q' keypress
     def getCameraPosition(self, QueryImage):
